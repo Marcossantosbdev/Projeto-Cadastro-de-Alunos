@@ -3,7 +3,9 @@ package com.example.cadastroalunos.model;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
+@Table
 @Entity
+
 public class Aluno {
 
     @Id
