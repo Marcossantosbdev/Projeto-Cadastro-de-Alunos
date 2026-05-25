@@ -11,7 +11,7 @@ import lombok.Setter;
 import java.time.LocalDate;
 
 
-@Table
+@Table(name = "aluno") //Deve ser igual ao que está no banco
 @Entity
 @Getter
 @Setter
@@ -30,7 +30,7 @@ public class Aluno {
     private String curso;
     private String telefone;
     private String endereco;
-    private LocalDate dataMatricula;
+    private LocalDate data_matricula;
 
     //Cadastro de alunos
     public Aluno(DadosCadastrarAluno dados) {
@@ -40,7 +40,7 @@ public class Aluno {
     this.curso = dados.cursoAluno();
     this.telefone = dados.telefoneAluno();
     this.endereco = dados.enderecoAluno();
-    this.dataMatricula = LocalDate.now();
+    this.data_matricula = LocalDate.now();
     }
 
     //Atualização do cadastro de alunos

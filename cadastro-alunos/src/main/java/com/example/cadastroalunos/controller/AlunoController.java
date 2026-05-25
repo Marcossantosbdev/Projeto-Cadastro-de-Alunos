@@ -7,6 +7,7 @@ import com.example.cadastroalunos.repository.AlunoRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +16,7 @@ import java.util.List;
 
 
 @RestController
-@RequestMapping("/alunos")
+@RequestMapping("/aluno")
 public class AlunoController {
 
     @Autowired
@@ -41,7 +42,21 @@ public class AlunoController {
     //2. Cadastrar utilizando o DTO e construtor
     @PostMapping
     @Transactional
-    public ResponseEntity<Aluno> cadastrar(@RequestBody @Valid DadosCadastrarAluno dadosAluno) {
+    //Controle de erros utilizando '?' para Spring aceitar retornar Aluno(Sucesso) ou uma String(erro)
+    public ResponseEntity<?> cadastrar(@RequestBody @Valid DadosCadastrarAluno dadosAluno) {
+
+        //1. Escudo de validação (Impedem o puloo de ID no MySQL)
+        if (repository.existsByMatricula(dadosAluno.matriculaAluno())){
+            return ResponseEntity.badRequest().body("Erro: essa matrícula já está cadastrada!");
+        }
+        if (repository.existsByEmail(dadosAluno.emailAluno())){
+            return ResponseEntity.badRequest().body("Erro: este email já está cadastrado!");
+        }
+        if (repository.existsByTelefone(dadosAluno.telefoneAluno())){
+            return ResponseEntity.badRequest().body("Erro: Este número de Telefone já está cadastrado!");
+        }
+
+        //2. Só será executado se passar pelas validações acima
         //Utiliza o construtor inteligente da entidade Aluno.
         Aluno aluno = new Aluno(dadosAluno);
         repository.save(aluno);
@@ -52,17 +67,21 @@ public class AlunoController {
     //3. Atualizar utilizando mesma base da função cadastrar
     @PutMapping("/{id}")
     @Transactional
-    public ResponseEntity<Aluno> atualizar(@PathVariable Long id,
+    public ResponseEntity<?> atualizar(@PathVariable Long id,
                                            @RequestBody @Valid DadosAtualizarAluno dadosAluno) {
-        //Busca o aluno no banco ou lança uma exceção se não encontrar
-        Aluno aluno = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Aluno não encontrado"));
+
+        var alunoOptional = repository.findById(id);
+        if (alunoOptional.isEmpty()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Erro: Aluno não encontrado!");
+        }
+        //Se achou, extrai o aluno de dentro do Optional
+        Aluno aluno = alunoOptional.get();
 
         //Executa as verificações de dados Null
         aluno.atualizarAluno(dadosAluno);
 
         //Por utilizar o Transactional é desnecessário utilizar repository.save(aluno).
-        //O JPA detecta a mudança e atualiza o banco sozinho ao final do méteodo.
+        //O JPA detecta a mudança e atualiza o banco sozinho ao final do metodo.
         return ResponseEntity.ok(aluno);
     }
 

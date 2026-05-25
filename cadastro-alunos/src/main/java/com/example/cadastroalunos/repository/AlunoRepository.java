@@ -7,4 +7,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AlunoRepository extends JpaRepository<Aluno, Long> {
     //Herdando de JpaRepository, o Spring já cria o CRUD completo debaixo dos panos
+    boolean existsByMatricula(String matricula);
+    boolean existsByEmail(String email);
+    boolean existsByTelefone(String telefone);
 }
