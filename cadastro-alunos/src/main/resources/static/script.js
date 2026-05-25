@@ -9,7 +9,7 @@ const emailInput = document.getElementById('email');
 const cursoInput = document.getElementById('curso');
 const telefoneInput = document.getElementById('telefone');
 const enderecoInput = document.getElementById('endereco');
-const dataMatriculaInput = document.getElementById('dataMatricula');
+
 const cancelarBtn = document.getElementById('cancelar');
 
 // Máscara de telefone
@@ -35,86 +35,117 @@ form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = alunoIdInput.value;
     const aluno = {
-        nome: nomeInput.value,
-        matricula: matriculaInput.value,
-        email: emailInput.value,
-        curso: cursoInput.value,
-        telefone: telefoneInput.value,
-        endereco: enderecoInput.value,
-        dataMatricula: dataMatriculaInput.value
+        nomeAluno: nomeInput.value,
+        matriculaAluno: matriculaInput.value,
+        emailAluno: emailInput.value,
+        cursoAluno: cursoInput.value,
+        telefoneAluno: telefoneInput.value.replace(/\D/g, ''),
+        enderecoAluno: enderecoInput.value
     };
 
-    if (id) {
-        await fetch(`${apiUrl}/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(aluno)
-        });
-    } else {
-        await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(aluno)
-        });
-    }
+    try {
+        let response;
+        if (id) {
+            response = await fetch(`${apiUrl}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, ...aluno })
+            });
+        } else {
+            response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(aluno)
+            });
+        }
 
-    limparFormulario();
-    carregarAlunos();
+        if (response.ok) {
+            alert(id ? "Aluno atualizado com sucesso!" : "Aluno cadastrado com sucesso!");
+            limparFormulario();
+            carregarAlunos();
+        } else {
+            const erroData = await response.json();
+
+            if (Array.isArray(erroData)) {
+                let mensagens = erroData.map(err => `${err.mensagem}`).join('\n');
+                alert("Erros de validação:\n" + mensagens);
+            } else if (erroData.mensagem) {
+                alert("Erro do Servidor: " + erroData.mensagem);
+            } else {
+                alert("Erro na API:\n" + JSON.stringify(erroData));
+            }
+        }
+    } catch (error) {
+        console.error('Erro na requisição:', error);
+        alert("Erro ao conectar com o servidor.");
+    }
 });
 
-cancelarBtn.addEventListener('click', limparFormulario);
-
 async function carregarAlunos() {
-    const response = await fetch(apiUrl);
-    const alunos = await response.json();
-    tabelaBody.innerHTML = '';
+    try {
+        const response = await fetch(apiUrl);
+        const alunos = await response.json();
+        tabelaBody.innerHTML = '';
 
-    alunos.forEach(aluno => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${aluno.nome}</td>
-            <td>${aluno.matricula}</td>
-            <td>${aluno.email}</td>
-            <td>${aluno.curso}</td>
-            <td>${aluno.telefone || ''}</td>
-            <td>${aluno.endereco || ''}</td>
-            <td>${aluno.dataMatricula || ''}</td>
-            <td>
-                <button class="editar" onclick="editarAluno(${aluno.id})">Editar</button>
-                <button class="excluir" onclick="excluirAluno(${aluno.id})">Excluir</button>
-            </td>
-        `;
-        tabelaBody.appendChild(row);
-    });
+        alunos.forEach(aluno => {
+            const row = document.createElement('tr');
+
+            // ATENÇÃO AQUI: Verifique se os nomes batem com os atributos da sua Entidade Aluno.java
+            row.innerHTML = `
+                <td>${aluno.nomeAluno || aluno.nome}</td>
+                <td>${aluno.matriculaAluno || aluno.matricula}</td>
+                <td>${aluno.emailAluno || aluno.email}</td>
+                <td>${aluno.cursoAluno || aluno.curso}</td>
+                <td>${aluno.telefoneAluno || aluno.telefone || ''}</td>
+                <td>${aluno.enderecoAluno || aluno.endereco || ''}</td>
+                <td>
+                    <button class="editar" onclick="editarAluno(${aluno.id})">Editar</button>
+                    <button class="excluir" onclick="excluirAluno(${aluno.id})">Excluir</button>
+                </td>
+            `;
+            tabelaBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar alunos:', error);
+    }
 }
 
 async function editarAluno(id) {
-    const response = await fetch(`${apiUrl}/${id}`);
-    const aluno = await response.json();
-    alunoIdInput.value = aluno.id;
-    nomeInput.value = aluno.nome;
-    matriculaInput.value = aluno.matricula;
-    emailInput.value = aluno.email;
+    try {
+        const response = await fetch(`${apiUrl}/${id}`);
+        const aluno = await response.json();
+        alunoIdInput.value = aluno.id;
 
-    // Selecionar o curso correto no <select>
-    const cursoSelect = document.getElementById('curso');
-    for (let option of cursoSelect.options) {
-        if (option.value === aluno.curso) {
-            option.selected = true;
-            break;
+        // Se houver nomeAluno usa ele, senão usa nome
+        nomeInput.value = aluno.nomeAluno || aluno.nome;
+        matriculaInput.value = aluno.matriculaAluno || aluno.matricula;
+        emailInput.value = aluno.emailAluno || aluno.email;
+
+        const cursoSelect = document.getElementById('curso');
+        const cursoAtual = aluno.cursoAluno || aluno.curso;
+        for (let option of cursoSelect.options) {
+            if (option.value === cursoAtual) {
+                option.selected = true;
+                break;
+            }
         }
-    }
 
-    telefoneInput.value = aluno.telefone || '';
-    enderecoInput.value = aluno.endereco || '';
-    dataMatriculaInput.value = aluno.dataMatricula || '';
-    cancelarBtn.style.display = 'inline-block';
+        telefoneInput.value = aluno.telefoneAluno || aluno.telefone || '';
+        enderecoInput.value = aluno.enderecoAluno || aluno.endereco || '';
+        cancelarBtn.style.display = 'inline-block';
+    } catch (error) {
+        console.error('Erro ao editar aluno:', error);
+    }
 }
 
 async function excluirAluno(id) {
     if (confirm('Tem certeza que deseja excluir este aluno?')) {
-        await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
-        carregarAlunos();
+        try {
+            await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+            carregarAlunos();
+        } catch (error) {
+            console.error('Erro ao excluir aluno:', error);
+        }
     }
 }
 
